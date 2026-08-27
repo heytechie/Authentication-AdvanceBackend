@@ -1,4 +1,4 @@
-import { AuthProvider, AuthAccount,User,Session } from "../../generated/prisma/index.js";
+import { AuthProvider, AuthAccount,User,Session,EmailVerificationToken } from "../../generated/prisma/index.js";
 
 import {
     createUserType,
@@ -8,6 +8,7 @@ import {
     updateSessionType,
     createSessionType,
     userPermissionsType,
+    LinkAuthAccountType,
 } from './auth.types.js'
 
 
@@ -30,10 +31,22 @@ export interface IAuthRepository {
 
     findAuthAccount(provider: AuthProvider, providerAccountId: string): Promise<AuthAccount | null>;
     createAuthAccount(
-    data: AuthAccount,
+    data: LinkAuthAccountType,
   ): Promise<AuthAccount>;
 
   linkAuthAccount(
     data: linkAuthType,
   ): Promise<AuthAccount>;
+
+  createEmailVerificationToken(
+    userId: string,
+    token: string,
+    expiresAt: Date,
+  ):Promise<EmailVerificationToken>;
+
+  findEmailVerificationToken(token: string): Promise<EmailVerificationToken | null>;
+
+  deleteEmailVerificationToken(token: string): Promise<void>;
+
+  verifyUserEmail(userId: string): Promise<void>;
 }

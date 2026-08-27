@@ -1,14 +1,16 @@
 import ms from 'ms';
 import { env } from "../../config/env.config.js";
 
-import { generateSessionId, hashRefreshToken } from './auth.helper.js';
+import { generateSessionId, hashRefreshToken,generateVerificationToken,hashVerificationToken } from './auth.helper.js';
 import { IAuthRepository } from "./auth.interface.js";
 import { RegisterUserDto, LoginUserDto } from "./auth.schema.js";
 import { signJwt, signRefreshJwt } from "../../utils/auth/jwt.js"
 import { hashPassword, comparePassword } from '../../utils/auth/password.js'
 import { BadRequestError } from "../../utils/error/index.js"
 import { sanitizedUserResponse } from "./auth.response.js"
-import { captchaService } from "./security/captcha.service.js";
+import { captchaService } from "../security/captcha.service.js";
+import { emailQueue } from '../../queue/email.queue.js';
+import { AuthProvider } from '../../generated/prisma/edge.js';
 
 export class AuthService {
     constructor(private readonly authRepository: IAuthRepository) { }
@@ -53,6 +55,33 @@ export class AuthService {
             refreshToken
         }
     }
+
+    async createEmailVerificationToken(userId:string){
+        const rawToken = generateVerificationToken();
+        const hashedToken = hashVerificationToken(rawToken)
+
+        const verificationTokenExpiresIn = ms(
+            env.EMAIL_VERIFICATION_TOKEN_EXPIRATION as ms.StringValue
+        )
+
+        if(typeof verificationTokenExpiresIn !== "number"){
+            throw new Error(
+                "Invalid email verification token expiry config"
+            )
+        }
+        
+        const expiresAt = new Date(
+            Date.now()+verificationTokenExpiresIn
+        )
+
+        await this.authRepository.createEmailVerificationToken(
+            userId,
+            hashedToken,
+            expiresAt
+        )
+
+        return rawToken
+    }
     async registerUser(userData: RegisterUserDto & { userAgent: string, ipAddress: string }) {
         try {
             await captchaService.verifyTurnstileToken(
@@ -65,7 +94,27 @@ export class AuthService {
             }
             const hashedPassword = await hashPassword(userData.password);
 
+
+
             const newUser = await this.authRepository.createUser({ name: userData.name, email: userData.email, hashedPassword });
+            
+            await this.authRepository.createAuthAccount({
+                userId: newUser.id,
+                provider: AuthProvider.EMAIL,
+                providerAccountId: newUser.id
+            })
+
+
+            const verificationToken = await this.createEmailVerificationToken(
+                newUser.id
+            )
+
+            await emailQueue.add('VERIFY_EMAIL',{
+                type:"VERIFY-EMAIL",
+                email:newUser.email,
+                name:newUser.name,
+                verificationToken
+            })
 
             const authSession = await this.createAuthenticatedSession(newUser.id, userData.userAgent, userData.ipAddress);
 

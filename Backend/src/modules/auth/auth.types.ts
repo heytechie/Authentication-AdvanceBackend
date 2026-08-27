@@ -87,3 +87,9 @@ export interface TurnstileVerificationResponse {
   action?: string;
   cdata?: string;
 }
+
+export type LinkAuthAccountType = {
+  userId: string;
+  provider: AuthProvider;
+  providerAccountId: string;
+};

@@ -1,6 +1,6 @@
 import {env} from '../../../config/env.config.js';
 import { AppError } from '../../../utils/error/AppError.js';
-import type {TuTurnstileVerificationResponse} from '../auth.types.js';
+import type {TurnstileVerificationResponse} from '../auth.types.js';
 
 
 export const captchaService ={
@@ -31,7 +31,7 @@ export const captchaService ={
                 throw new AppError("Captcha verification service unavailable",503)
             }
 
-            const result = (await res.json()) as TuTurnstileVerificationResponse;
+            const result = (await res.json()) as TurnstileVerificationResponse;
 
             if(!result.success){
                 throw new AppError("Captcha verification failed",400)

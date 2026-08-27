@@ -25,7 +25,11 @@ const envSchema = z.object({
     SMTP_USER: z.string(),
     SMTP_PASSWORD: z.string(),
     EMAIL_FROM: z.string(),
-    FRONTEND_URL:z.string()
+    FRONTEND_URL:z.string(),
+    EMAIL_VERIFICATION_TOKEN_EXPIRATION:z.string(),
+    GOOGLE_CLIENT_ID:z.string(),
+    GOOGLE_CLIENT_SECRET:z.string(),
+    GOOGLE_CALLBACK_URL:z.string()
 })
 
 

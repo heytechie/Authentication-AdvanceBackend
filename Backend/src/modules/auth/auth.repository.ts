@@ -1,8 +1,10 @@
+import { date } from "zod";
 import {
-  AuthAccount,
-  AuthProvider,
-  Session,
-  User,
+    AuthAccount,
+    AuthProvider,
+    EmailVerificationToken,
+    Session,
+    User,
 } from "../../generated/prisma/client.js";
 
 import { prisma } from "../../lib/prisma.js";
@@ -10,19 +12,20 @@ import { prisma } from "../../lib/prisma.js";
 import { IAuthRepository } from "./auth.interface.js";
 
 import {
-  AuthAccountWithUser,
-  createSessionType,
-  createUserType,
-  findUserByIdType,
-  linkAuthType,
-  updateSessionType,
-  userPermissionsType,
+    AuthAccountWithUser,
+    createSessionType,
+    createUserType,
+    findUserByIdType,
+    LinkAuthAccountType,
+    linkAuthType,
+    updateSessionType,
+    userPermissionsType,
 } from "./auth.types.js";
 
 export class authRepository implements IAuthRepository {
-    async findUserByEmail(email:string):Promise<User | null> {
+    async findUserByEmail(email: string): Promise<User | null> {
         return await prisma.user.findUnique({
-            where:{
+            where: {
                 email
             }
         })
@@ -30,10 +33,10 @@ export class authRepository implements IAuthRepository {
 
     async findUserById(userId: string): Promise<findUserByIdType | null> {
         return await prisma.user.findUnique({
-            where:{
+            where: {
                 id: userId
             },
-            select:{
+            select: {
                 id: true,
                 name: true,
                 email: true,
@@ -44,16 +47,16 @@ export class authRepository implements IAuthRepository {
 
     async findUserByUserIdandSessionId(userId: string, sessionId: string): Promise<Session | null> {
         return await prisma.session.findFirst({
-            where:{
+            where: {
                 userId,
                 id: sessionId
             }
         })
     }
 
-    async findSessionById(sessionId:string):Promise<Session | null>{
+    async findSessionById(sessionId: string): Promise<Session | null> {
         return await prisma.session.findUnique({
-            where:{
+            where: {
                 id: sessionId
             }
         })
@@ -61,30 +64,30 @@ export class authRepository implements IAuthRepository {
 
     async revokeUserAllSessions(userId: string): Promise<void> {
         await prisma.session.updateMany({
-            where:{
+            where: {
                 userId,
                 isRevoked: false
             },
-            data:{
+            data: {
                 isRevoked: true,
                 revokedAt: new Date()
             }
         })
     }
 
-    async createUser(data:createUserType):Promise<User>{
+    async createUser(data: createUserType): Promise<User> {
         return await prisma.user.create({
-            data:{
+            data: {
                 name: data.name,
                 email: data.email,
                 passwordHash: data.hashedPassword
             }
         })
     }
-        
-    async createSession(data:createSessionType):Promise<Session>{
+
+    async createSession(data: createSessionType): Promise<Session> {
         return await prisma.session.create({
-            data:{
+            data: {
                 id: data.id,
                 userId: data.userId,
                 refreshTokenHash: data.refreshTokenHash,
@@ -95,21 +98,21 @@ export class authRepository implements IAuthRepository {
         })
     }
 
-    async updateSession(sessionId:string, data:updateSessionType):Promise<Session>{
+    async updateSession(sessionId: string, data: updateSessionType): Promise<Session> {
         return await prisma.session.update({
-            where:{
+            where: {
                 id: sessionId
             },
-            data:{
+            data: {
                 refreshTokenHash: data.hashedNewRefreshToken,
                 expiresAt: data.newRefreshTokenExpiresAt
             }
         })
     }
 
-    async deleteSession(sessionId:string):Promise<void>{
+    async deleteSession(sessionId: string): Promise<void> {
         await prisma.session.delete({
-            where:{
+            where: {
                 id: sessionId
             }
         })
@@ -117,30 +120,30 @@ export class authRepository implements IAuthRepository {
 
     async deleteUserAllSessions(userId: string): Promise<void> {
         await prisma.session.deleteMany({
-            where:{
+            where: {
                 userId
             }
         })
     }
 
-    async getUserPermissions(userId:string):Promise<userPermissionsType | null>{
+    async getUserPermissions(userId: string): Promise<userPermissionsType | null> {
         return await prisma.user.findUnique({
-            where:{
+            where: {
                 id: userId
             },
-            select:{
+            select: {
                 id: true,
                 email: true,
-                userRoles:{
-                    select:{
-                        role:{
-                            select:{
+                userRoles: {
+                    select: {
+                        role: {
+                            select: {
                                 id: true,
                                 name: true,
-                                rolePermissions:{
-                                    select:{
-                                        permission:{
-                                            select:{
+                                rolePermissions: {
+                                    select: {
+                                        permission: {
+                                            select: {
                                                 id: true,
                                                 name: true
                                             }
@@ -150,14 +153,15 @@ export class authRepository implements IAuthRepository {
                             }
                         }
                     }
-            }}
+                }
+            }
         })
     }
-    
+
     async findAuthAccount(provider: AuthProvider, providerAccountId: string): Promise<AuthAccount | null> {
         return await prisma.authAccount.findUnique({
-            where:{
-                provider_providerAccountId:{
+            where: {
+                provider_providerAccountId: {
                     provider,
                     providerAccountId
                 }
@@ -165,7 +169,7 @@ export class authRepository implements IAuthRepository {
         })
     }
 
-    async createAuthAccount(data: AuthAccount): Promise<AuthAccount> { 
+    async createAuthAccount(data: LinkAuthAccountType): Promise<AuthAccount> {
         return await prisma.authAccount.create({
             data
         })
@@ -173,11 +177,51 @@ export class authRepository implements IAuthRepository {
 
     async linkAuthAccount(data: linkAuthType): Promise<AuthAccount> {
         return await prisma.authAccount.create({
-            data:{
+            data: {
                 userId: data.userId,
                 provider: data.provider,
                 providerAccountId: data.providerAccountId
             }
+        })
+    }
+
+    async createEmailVerificationToken(userId: string, token: string, expiresAt: Date): Promise<EmailVerificationToken> {
+        return await prisma.emailVerificationToken.create({
+            data: {
+                userId,
+                token,
+                expiresAt
+            }
+        })
+    }
+
+    async findEmailVerificationToken(token: string): Promise<EmailVerificationToken | null> {
+        return await prisma.emailVerificationToken.findUnique({
+            where: {
+                token
+            }
+        })
+    }
+
+    async deleteEmailVerificationToken(token: string): Promise<void> {
+        await prisma.emailVerificationToken.delete({
+            where: {
+                id: token
+            }
+        })
+    }
+
+
+    async verifyUserEmail(userId: string): Promise<void> {
+        await prisma.user.update({
+            where: {
+                id: userId
+            },
+
+            data: {
+                isEmailVerified: true
+            }
+
         })
     }
 
