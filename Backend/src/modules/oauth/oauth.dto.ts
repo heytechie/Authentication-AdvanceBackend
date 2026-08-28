@@ -3,5 +3,5 @@ export interface GoogleUserProfile{
     email:string;
     name?:string;
     picture?:string;
-    email_verified:boolean;
+    emailVerified:boolean;
 }

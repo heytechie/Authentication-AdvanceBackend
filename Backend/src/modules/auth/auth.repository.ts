@@ -45,7 +45,7 @@ export class authRepository implements IAuthRepository {
         })
     }
 
-    async findUserByUserIdandSessionId(userId: string, sessionId: string): Promise<Session | null> {
+    async findSessionByUserIdandSessionId(userId: string, sessionId: string): Promise<Session | null> {
         return await prisma.session.findFirst({
             where: {
                 userId,
@@ -80,7 +80,8 @@ export class authRepository implements IAuthRepository {
             data: {
                 name: data.name,
                 email: data.email,
-                passwordHash: data.hashedPassword
+                passwordHash: data.hashedPassword,
+                isEmailVerified: data.isEmailVerified ?? false
             }
         })
     }

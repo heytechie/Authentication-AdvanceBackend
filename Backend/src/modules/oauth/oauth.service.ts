@@ -1,14 +1,14 @@
 import { googleOauthClient } from "../../lib/google.js";
 import { generateOAuthState } from "./oauth.helper.js";
-import { GoogleUserProfile } from './oauth.dto.js';
+import  type { GoogleUserProfile } from './oauth.dto.js';
 import { google } from "googleapis";
-import { AuthProvider, AuthAccount } from "../../generated/prisma/client.js";
+import { AuthProvider } from "../../generated/prisma/client.js";
 import { AuthService } from '../auth/auth.service.js'
 import { AppError } from '../../utils/error/AppError.js'
 import { authRepository } from "../auth/auth.repository.js";
 
 export class OauthService {
-    constructor(private readonly authrepo: authRepository, private readonly authService: AuthService) { }
+    constructor(private readonly authRepo: authRepository, private readonly authService: AuthService) { }
 
 
     generateGoogleAuthUrl() {
@@ -28,15 +28,12 @@ export class OauthService {
         return { url, state };
     }
 
-    async exchangeCodeForTokens(code: string) {
-        const { tokens } = await googleOauthClient().getToken(code);
-        return tokens;
-    }
+  
 
     async getGoogleUserProfile(code: string): Promise<GoogleUserProfile> {
         const client = googleOauthClient();
-        const token = await this.exchangeCodeForTokens(code);
-        client.setCredentials(token);
+        const {tokens} = await client.getToken(code);
+        client.setCredentials(tokens);
 
         const oauth2 = google.oauth2({
             auth: client,
@@ -45,7 +42,7 @@ export class OauthService {
 
         const { data } = await oauth2.userinfo.get();
         if (!data.id || !data.email || data.verified_email === undefined) {
-            throw new Error("Failed to retrieve user profile from Google");
+            throw new AppError("Failed to retrieve user profile from Google",400);
         }
 
         return {
@@ -53,7 +50,7 @@ export class OauthService {
             email: data.email,
             name: data.name ?? undefined,
             picture: data.picture ?? undefined,
-            email_verified: data.verified_email ?? false
+            emailVerified: data.verified_email ?? false
         }
     }
 
@@ -63,12 +60,12 @@ export class OauthService {
         userAgent: string,
         ipAddress: string
     ) {
-        if (!profile.email_verified) {
+        if (!profile.emailVerified) {
             throw new AppError("Google email is not verified ", 403);
         }
 
         //check if this account is already linked to a user
-        const existingAuthAccount = await this.authrepo.findAuthAccount(
+        const existingAuthAccount = await this.authRepo.findAuthAccount(
             AuthProvider.GOOGLE,
             profile.providerAccountId
         );
@@ -83,29 +80,30 @@ export class OauthService {
 
             return {
                 user: existingAuthAccount.userId,
-                session: authSession
+                ...authSession
             }
         }
 
-        const existingUser = await this.authrepo.findUserByEmail(profile.email);
+        const existingUser = await this.authRepo.findUserByEmail(profile.email);
         let useraccount;
 
         if (existingUser) {
             useraccount = existingUser;
 
-            await this.authrepo.createAuthAccount({
+            await this.authRepo.createAuthAccount({
                 userId: useraccount.id,
                 provider: AuthProvider.GOOGLE,
                 providerAccountId: profile.providerAccountId,
             });
         }else{
-            useraccount = await this.authrepo.createUser({
+            useraccount = await this.authRepo.createUser({
                 name: profile.name ?? "Google User",
                 email: profile.email,
-                hashedPassword: null
+                hashedPassword: null,
+                isEmailVerified: true
             });
 
-            await this.authrepo.createAuthAccount({
+            await this.authRepo.createAuthAccount({
                 userId: useraccount.id,
                 provider: AuthProvider.GOOGLE,
                 providerAccountId: profile.providerAccountId,
@@ -120,7 +118,7 @@ export class OauthService {
 
         return {
             user: useraccount,
-            session: authSession
+            ...authSession
         }
     }
 }

@@ -5,6 +5,7 @@ export type createUserType ={
     name:string;
     email: string;
     hashedPassword: string | null
+    isEmailVerified?: boolean;
 }
 
 export type userSessionType = {

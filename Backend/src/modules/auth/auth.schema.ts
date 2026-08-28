@@ -15,7 +15,8 @@ export const registerUserSchema = z.object({
 
 export const loginUserSchema = z.object({
     email : z.email("Invalid email address").trim().toLowerCase(),
-    password : z.string()
+    password : z.string(),
+    captchaToken: z.string().optional()
 })
 export type RegisterUserDto = z.infer<typeof registerUserSchema>;
 export type LoginUserDto = z.infer<typeof loginUserSchema>;

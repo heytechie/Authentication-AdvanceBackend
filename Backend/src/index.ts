@@ -1,17 +1,10 @@
-import { prisma } from "./lib/prisma.js";
+import app from "./app.js";
+import { env } from "./config/env.config.js";
 
-async function main() {
-  await prisma.$connect();
-
-  console.log("Database connected successfully");
-
-  await prisma.$disconnect();
-}
-
-main().catch(async (error) => {
-  console.error("Database connection failed:", error);
-
-  await prisma.$disconnect();
-
-  process.exit(1);
+const server = app.listen(env.PORT, () => {
+  console.log(
+    `Server running on port ${env.PORT}`,
+  );
 });
+
+export default server;
