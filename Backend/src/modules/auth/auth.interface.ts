@@ -19,7 +19,7 @@ export interface IAuthRepository {
 
     
     findSessionById(sessionId: string): Promise<Session | null>;
-    findUserByUserIdandSessionId(userId: string, sessionId: string): Promise<Session | null>;
+    findSessionByUserIdandSessionId(userId: string, sessionId: string): Promise<Session | null>;
     revokeUserAllSessions(userId: string): Promise<void>;
     
     createUser(data: createUserType): Promise<User>;

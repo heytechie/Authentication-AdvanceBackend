@@ -1,6 +1,6 @@
-import {env} from '../../../config/env.config.js';
-import { AppError } from '../../../utils/error/AppError.js';
-import type {TurnstileVerificationResponse} from '../auth.types.js';
+import {env} from '../../config/env.config.js'
+import { AppError } from '../../utils/error/AppError.js';
+import type {TurnstileVerificationResponse} from '../auth/auth.types.js';
 
 
 export const captchaService ={

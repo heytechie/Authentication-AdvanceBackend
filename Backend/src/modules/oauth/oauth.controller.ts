@@ -1,18 +1,18 @@
-import { Request,Response } from "express";
+import { Request, Response } from "express";
 
 import {
-  clearOAuthStateCookie,
-  setOAuthStateCookie,
+    clearOAuthStateCookie,
+    setOAuthStateCookie,
+    OAUTH_STATE_COOKIE
 } from "./oauth.helper.js";
 
-import  {OauthService}  from "./oauth.service.js";
+import { oauthService } from "./oauth.container.js";
 
 export class OauthController {
-    constructor(private readonly oauthService: OauthService) {}
 
 
     startGoogleAuth = (req: Request, res: Response) => {
-        const {url, state}=this.oauthService.generateGoogleAuthUrl();
+        const { url, state } = oauthService.generateGoogleAuthUrl();
 
         setOAuthStateCookie(res, state);
 
@@ -20,34 +20,42 @@ export class OauthController {
     }
 
     googleCallback = async (req: Request, res: Response) => {
-        const {code, state} = req.query;
+        const { code, state } = req.query;
 
-        if(
+        if (
             typeof code !== "string" ||
             typeof state !== "string"
-        ){
+        ) {
             return res.status(400).json({
-                success:false,
-                error:"Invalid request"});
+                success: false,
+                error: "Invalid request"
+            });
         }
 
-        const storedState = req.cookies.oauth_state;
+        const storedState = req.cookies[OAUTH_STATE_COOKIE];
 
-        if(!storedState || storedState !== state){
+        if (!storedState || storedState !== state) {
             clearOAuthStateCookie(res);
             return res.status(400).json({
-                success:false,
-                error:"Invalid state parameter"
+                success: false,
+                error: "Invalid state parameter"
             });
         }
 
         clearOAuthStateCookie(res);
 
-        const userProfile = await this.oauthService.getGoogleUserProfile(code);
+        const userProfile = await oauthService.getGoogleUserProfile(code);
+        
+        const result =
+            await oauthService.authenticateUser(
+                userProfile,
+                req.get("User-Agent") ?? "unknown",
+                req.ip ?? "unknown",
+            );
 
         return res.status(200).json({
-            success:true,
-            data:userProfile
+            success: true,
+            data: result
         })
 
     }
