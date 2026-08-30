@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import redis from '../../lib/redis.js';
 import { AppError } from '../../utils/error/index.js';
+import { rateLimitScript } from './rate-limit-script.js';
 
 type RateLimitConfig={
     keyPrefix: string;
@@ -13,14 +14,9 @@ export const createRateLimit = (config: RateLimitConfig) => {
         try{
             const identifier = req.ip;
             const key = `rate-limit:${config.keyPrefix}:${identifier}`;
-            const current = await redis.incr(key);
+            const result = await redis.eval(rateLimitScript, 1, key, config.windowSeconds) as [number, number];
 
-            if (current === 1) {
-                await redis.expire(key, config.windowSeconds);
-            }
-            
-            const ttl = await redis.ttl(key);
-
+            const [current, ttl] = result;
             const remaining = Math.max(0, config.limit - current);
 
             res.setHeader('X-RateLimit-Limit', config.limit);

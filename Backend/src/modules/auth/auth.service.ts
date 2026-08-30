@@ -32,6 +32,7 @@ import {
   BadRequestError,
   UnauthorizedError,
   AppError,
+  ForbiddenError,
 } from "../../utils/error/index.js";
 
 import { sanitizedUserResponse } from "./auth.response.js";
@@ -45,7 +46,6 @@ import { authRepository } from "./auth.repository.js";
 import type { userSessionType } from "./auth.types.js";
 import { loginLockoutService } from "../security/login-lockout.service.js";
 import { refreshProtectionService } from "../security/refresh-protection.service.js";
-import { success } from "zod";
 
 export class AuthService {
   constructor(
@@ -226,8 +226,12 @@ export class AuthService {
     );
 
     if (requiresCaptcha && !loginData.captchaToken) {
+     throw new ForbiddenError("Captcha required");
+    }
+
+    if(requiresCaptcha && loginData.captchaToken){
       await captchaService.verifyTurnstileToken(
-        loginData.captchaToken!,
+        loginData.captchaToken,
         loginData.ipAddress
       );
     }
@@ -503,12 +507,12 @@ export class AuthService {
     newPassword : string
   ){
     const hashedToken = hashVerificationToken(token);
-    const resetToken = await this.authRepository.findPasswordResetToken(token);
+    const resetToken = await this.authRepository.findPasswordResetToken(hashedToken);
     if(!resetToken){
       throw new BadRequestError("Invalid token")
     }
 
-    if(resetToken.usedAt || resetToken.expiresAt.getDate()<=Date.now()){
+    if(resetToken.usedAt || resetToken.expiresAt.getTime()<=Date.now()){
       throw new BadRequestError("Token is expired or already used")
     }
 
