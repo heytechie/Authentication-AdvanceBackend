@@ -17,7 +17,7 @@ const envSchema = z.object({
     BYCRYPT_SALT_ROUNDS: z.coerce.number().default(10),
     TURNSTILE_SITE_KEY: z.string(),
     TURNSTILE_SECRET_KEY: z.string(),
-    Redis_URL: z.string(),
+    REDIS_URL: z.string(),
     REDIS_PORT: z.coerce.number(),
     SMTP_HOST: z.string(),
     SMTP_PORT: z.coerce.number(),
