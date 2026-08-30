@@ -1,4 +1,4 @@
-import { AuthProvider, AuthAccount,User,Session,EmailVerificationToken } from "../../generated/prisma/index.js";
+import { AuthProvider, AuthAccount,User,Session,EmailVerificationToken, PasswordResetToken } from "../../generated/prisma/index.js";
 
 import {
     createUserType,
@@ -49,4 +49,11 @@ export interface IAuthRepository {
   deleteEmailVerificationToken(token: string): Promise<void>;
 
   verifyUserEmail(userId: string): Promise<void>;
+  createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void>;
+
+  findPasswordResetToken(token:string): Promise<PasswordResetToken | null>
+
+  updateUserPassword(id:string,passwordHash:string):Promise<void>
+  markPasswordResetTokenUsed(id:string):Promise<void>
+
 }

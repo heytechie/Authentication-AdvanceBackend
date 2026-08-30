@@ -28,19 +28,17 @@ const envSchema = z.object({
     EMAIL_VERIFICATION_TOKEN_EXPIRATION:z.string(),
     GOOGLE_CLIENT_ID:z.string(),
     GOOGLE_CLIENT_SECRET:z.string(),
-    GOOGLE_CALLBACK_URL:z.string()
+    GOOGLE_CALLBACK_URL:z.string(),
+    PASSWORD_RESET_TOKEN_EXPIRATION:z.string()
 })
 
 
-const parsedEnv = envSchema.safeParse(process.env)
+const parsedEnv = envSchema.safeParse(process.env);
 
-if(!parsedEnv.success){
-    console.error(
-        "Invalid env vars",
-        z.treeifyError(parsedEnv.error)
-    )
-
-    process.exit(1);
+if (!parsedEnv.success) {
+  console.error("Invalid env vars");
+  console.error(z.treeifyError(parsedEnv.error));
+  throw new Error("Invalid environment variables");
 }
 
 export const env = parsedEnv.data;

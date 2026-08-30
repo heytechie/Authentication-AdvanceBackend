@@ -17,6 +17,13 @@ export const emailWorker = new Worker<verifyEmailJobType>(
                 );
                 break;
             
+            case "PASSWORD-RESET":
+                await emailService.sendPasswordResetEmail(
+                    job.data.email,
+                    job.data.name,
+                    job.data.verificationToken
+                );
+                break;
 
             default:
                 throw new Error(

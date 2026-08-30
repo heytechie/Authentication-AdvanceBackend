@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
-import {env} from '../../config/env.config.js'
-import {verificationEmailTemplate} from './template/verificationEmail.js'
+import { env } from '../../config/env.config.js';
+import { verificationEmailTemplate } from './template/verificationEmail.js';
+import { passwordResetTemplate } from './template/passwordResetTemp.js';
 
 const transporter = nodemailer.createTransport({
     host: env.SMTP_HOST,
@@ -9,21 +10,34 @@ const transporter = nodemailer.createTransport({
         user: env.SMTP_USER,
         pass: env.SMTP_PASSWORD
     }
-})
-
+});
 
 export const emailService = {
     async sendVerificationEmail(email:string,name:string,verificationToken:string):Promise<void> {
-        const verificationUrl = `${env.FRONTEND_URL}/verify-email?token=${verificationToken}`
+        const verificationUrl = `${env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
 
-        const template = verificationEmailTemplate(name,verificationUrl);
+        const template = verificationEmailTemplate(name, verificationUrl);
 
         await transporter.sendMail({
-            from:env.EMAIL_FROM,
-            to:email,
-            subject:template.subject,
-            text:template.text,
-            html:template.html
-        })
+            from: env.EMAIL_FROM,
+            to: email,
+            subject: template.subject,
+            text: template.text,
+            html: template.html
+        });
+    },
+
+    async sendPasswordResetEmail(email:string,name:string,verificationToken:string):Promise<void> {
+        const resetUrl = `${env.FRONTEND_URL}/reset-password?token=${verificationToken}`;
+
+        const template = passwordResetTemplate(name, resetUrl);
+
+        await transporter.sendMail({
+            from: env.EMAIL_FROM,
+            to: email,
+            subject: template.subject,
+            text: template.text,
+            html: template.html
+        });
     }
-}
+};

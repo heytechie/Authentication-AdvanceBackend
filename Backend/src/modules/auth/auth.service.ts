@@ -39,11 +39,13 @@ import { sanitizedUserResponse } from "./auth.response.js";
 import { captchaService } from "../security/captcha.service.js";
 
 import { emailQueue } from "../../queue/email.queue.js";
+import { EmailJobType } from "../../queue/email.type.js";
 
 import { authRepository } from "./auth.repository.js";
 import type { userSessionType } from "./auth.types.js";
 import { loginLockoutService } from "../security/login-lockout.service.js";
 import { refreshProtectionService } from "../security/refresh-protection.service.js";
+import { success } from "zod";
 
 export class AuthService {
   constructor(
@@ -191,7 +193,7 @@ export class AuthService {
 
     // 7. Queue verification email
     await emailQueue.add("VERIFY-EMAIL", {
-      type: "VERIFY-EMAIL",
+      type: EmailJobType.VERIFY_EMAIL,
       email: newUser.email,
       name: newUser.name,
       verificationToken,
@@ -439,6 +441,95 @@ export class AuthService {
 
     return {
       message: "Email verified successfully"
+    }
+  }
+
+
+  //Reset Password
+  async reqResetPassword(email:string){
+    const user = await this.authRepository.findUserByEmail(email);
+    if(!user){
+      return{
+        message: "If the email exists, a password reset link will be sent."
+      }
+    }
+
+    const resetToken = generateVerificationToken();
+    const hashedResetToken = hashVerificationToken(resetToken);
+
+    const resetTokenExpiresIN = ms(env.PASSWORD_RESET_TOKEN_EXPIRATION as ms.StringValue);
+
+    if(typeof resetTokenExpiresIN !== "number"){
+      throw new Error("Invalid password reset token expiration value");
+    }
+
+    const expiresAt = new Date(Date.now()+resetTokenExpiresIN);
+
+    await this.authRepository.createPasswordResetToken(user.id, hashedResetToken, expiresAt);
+
+    await emailQueue.add("PASSWORD-RESET", {
+      type: EmailJobType.PASSWORD_RESET,
+      email: user.email,
+      name: user.name,
+      verificationToken: resetToken,
+    });
+
+    return {
+      message: "If the email exists, a password reset link will be sent."
+    };
+  }
+
+
+  async verifyPasswordResetToken(token:string){
+    const hashedToken = hashVerificationToken(token);
+    
+    const resetToken = await this.authRepository.findPasswordResetToken(hashedToken) ;
+    if(!resetToken){
+      throw new BadRequestError("Token is invalid")
+    }
+
+
+    if(resetToken.usedAt || resetToken.expiresAt.getTime() <=Date.now()){
+      throw new BadRequestError("Reset token is invalid or expired")
+    }
+
+    return {
+      valid:true
+    }
+  }
+
+  async resetPassword(
+    token : string,
+    newPassword : string
+  ){
+    const hashedToken = hashVerificationToken(token);
+    const resetToken = await this.authRepository.findPasswordResetToken(token);
+    if(!resetToken){
+      throw new BadRequestError("Invalid token")
+    }
+
+    if(resetToken.usedAt || resetToken.expiresAt.getDate()<=Date.now()){
+      throw new BadRequestError("Token is expired or already used")
+    }
+
+    const passwordHash = await hashPassword(newPassword)
+
+    await this.authRepository.updateUserPassword(
+      resetToken.userId,
+      passwordHash
+    )
+
+    await this.authRepository.markPasswordResetTokenUsed(
+      resetToken.id
+    )
+
+    await this.authRepository.deleteUserAllSessions(
+      resetToken.userId
+    )
+
+    return{
+      success:true,
+      message:"Password reset successfull"
     }
   }
 
