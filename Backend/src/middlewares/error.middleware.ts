@@ -1,54 +1,55 @@
-import { NextFunction,Response,Request } from "express";
-import {env} from "../config/env.config.js"
+import type {
+  NextFunction,
+  Request,
+  Response,
+} from "express";
+
+import { env } from "../config/env.config.js";
 import { logger } from "../config/logger.js";
+import { AppError } from "../utils/error/AppError.js";
 
 export const globalErrorHandler = (
-    err: Error & {
-        statusCode ?:number;
-        status?:string;
-        isOperational?:boolean
+  err: unknown,
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  console.error(err);
 
-    },
-    req:Request,
-    res:Response,
-    next:NextFunction
-)=>{
-    let error = {...err}
-    error.message = err.message
-    error.statusCode = err.statusCode
-    error.status = err.status || "error"
-
-    if (env.NODE_ENV === "dev") {
+  if (err instanceof AppError) {
     logger.error({
-      message: error.message,
+      status: err.status,
+      statusCode: err.statusCode,
+      message: err.message,
       stack: err.stack,
-      error,
     });
-    return res.status(error.statusCode as number).json({
-      status: error.status,
-      message: error.message,
-      stack: err.stack,
-      error,
-    });
-  }
 
-  if (error.isOperational) {
-    logger.error({
-      status: error.status,
-      message: error.message,
-    });
-    return res.status(error.statusCode as number).json({
-      status: error.status,
-      message: error.message,
+    return res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message,
+      ...(env.NODE_ENV === "dev" && {
+        stack: err.stack,
+      }),
     });
   }
 
   logger.error({
-    success: false,
-    message: "Something went wrong",
+    message:
+      err instanceof Error
+        ? err.message
+        : "Unknown error",
+    stack:
+      err instanceof Error
+        ? err.stack
+        : undefined,
   });
+
   return res.status(500).json({
     success: false,
     message: "Something went wrong",
+    ...(env.NODE_ENV === "dev" &&
+      err instanceof Error && {
+        stack: err.stack,
+      }),
   });
 };
