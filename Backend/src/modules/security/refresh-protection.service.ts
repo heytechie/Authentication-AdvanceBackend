@@ -1,17 +1,25 @@
 import redis from "../../lib/redis.js";
 import { AppError } from '../../utils/error/index.js'
+import crypto from "crypto";
 
 const LOCK_TTL_SECONDS = 10; // 10 seconds lockout period
 
 const getRefreshLockKey = (refreshToken: string) => {
     return `auth:refresh-lock:${refreshToken}`;
 }
+const RELEASE_LOCK_SCRIPT = `
+  if redis.call("GET", KEYS[1]) == ARGV[1] then
+    return redis.call("DEL", KEYS[1])
+  end
 
+  return 0
+`;
 export const refreshProtectionService = {
-    async acquireLock(refreshToken: string): Promise<void> {
+    async acquireLock(refreshToken: string): Promise<string> {
         const lockKey = getRefreshLockKey(refreshToken);
+        const lockValue = crypto.randomUUID(); // Generate a unique value for the lock
         const lockAcquired = await redis.set(lockKey,
-            "1",
+            lockValue,
             "EX",
             LOCK_TTL_SECONDS,
             "NX"
@@ -20,11 +28,13 @@ export const refreshProtectionService = {
         if (lockAcquired !== "OK") {
             throw new AppError("Refresh Reqquest already in progress", 409);
         }
+
+        return lockValue; // Return the unique value for the lock
     },
 
-    async releaseLock(refreshToken: string): Promise<void> {
+    async releaseLock(refreshToken: string,lockValue: string): Promise<void> {
         const lockKey = getRefreshLockKey(refreshToken);
-        await redis.del(lockKey);
+        await redis.eval(RELEASE_LOCK_SCRIPT, 1, lockKey, lockValue);
     },
 
     validateSession(session: {
