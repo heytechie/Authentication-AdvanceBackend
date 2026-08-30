@@ -1,8 +1,8 @@
-import { date } from "zod";
 import {
     AuthAccount,
     AuthProvider,
     EmailVerificationToken,
+    PasswordResetToken,
     Session,
     User,
 } from "../../generated/prisma/client.js";
@@ -11,8 +11,9 @@ import { prisma } from "../../lib/prisma.js";
 
 import { IAuthRepository } from "./auth.interface.js";
 
+import { RoleName } from '../../generated/prisma/client.js';
+
 import {
-    AuthAccountWithUser,
     createSessionType,
     createUserType,
     findUserByIdType,
@@ -21,6 +22,7 @@ import {
     updateSessionType,
     userPermissionsType,
 } from "./auth.types.js";
+
 
 export class authRepository implements IAuthRepository {
     async findUserByEmail(email: string): Promise<User | null> {
@@ -81,7 +83,17 @@ export class authRepository implements IAuthRepository {
                 name: data.name,
                 email: data.email,
                 passwordHash: data.hashedPassword,
-                isEmailVerified: data.isEmailVerified ?? false
+                isEmailVerified: data.isEmailVerified ?? false,
+
+                userRoles: {
+                    create: {
+                        role: {
+                            connect: {
+                                name: RoleName.USER
+                            }
+                        }
+                    }
+                }
             }
         })
     }
@@ -226,4 +238,77 @@ export class authRepository implements IAuthRepository {
         })
     }
 
+    async createPasswordResetToken(
+        userId: string,
+        token: string,
+        expiresAt: Date,
+    ): Promise<void> {
+        await prisma.passwordResetToken.upsert({
+            where: {
+                userId,
+            },
+            update: {
+                token,
+                expiresAt,
+                usedAt: null,
+            },
+            create: {
+                userId,
+                token,
+                expiresAt,
+            },
+        });
+    }
+
+    async findPasswordResetToken(token: string): Promise<PasswordResetToken | null> {
+        return await prisma.passwordResetToken.findUnique({
+            where: {
+                token
+            }
+        })
+    }
+
+    async updateUserPassword(id: string, passwordHash: string): Promise<void> {
+        await prisma.user.update(
+            {
+                where: {
+                    id: id
+                },
+                data: {
+                    passwordHash
+                }
+            }
+        )
+    }
+
+    async markPasswordResetTokenUsed(
+        id: string,
+    ): Promise<void> {
+        await prisma.passwordResetToken.update({
+            where: {
+                id,
+            },
+            data: {
+                usedAt: new Date(),
+            },
+        });
+    }
 }
+
+//     async assignRoleToUser(
+//   data: AssignUserRoleType,
+// ): Promise<UserRole> {
+//   return await prisma.userRole.upsert({
+//     where: {
+//       userId_roleId: {
+//         userId: data.userId,
+//         roleId: data.roleId,
+//       },
+//     },
+//     update: {},
+//     create: {
+//       userId: data.userId,
+//       roleId: data.roleId,
+//     },
+//   });
+

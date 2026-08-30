@@ -11,6 +11,8 @@ export type createUserType ={
 export type userSessionType = {
     userId: string;
     sessionId: string;
+    roles?: string[];
+    permissions?: string[];
 }
 
 export type JWTPayload ={
@@ -94,3 +96,8 @@ export type LinkAuthAccountType = {
   provider: AuthProvider;
   providerAccountId: string;
 };
+
+// export type AssignUserRoleType = {
+//   userId: string;
+//   roleId: string;
+// };
