@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import {LOGIN_LOCKOUT_SCRIPT} from './login-lockout.script.js';
 const ACCOUNT_MAX_FAILURES = 5;
 const IP_MAX_FAILURES = 20;
-const FAILED_ATTEMPT_WINDOW = 15 * 60; // 1 hour in seconds
+const FAILED_ATTEMPT_WINDOW = 15 * 60; // 15 minutes in seconds
 
 const hashIdentifier = (value:string): string => {
     return crypto.createHash('sha256').update(value).digest('hex')
