@@ -4,6 +4,9 @@ import { AuthService } from "./auth.service.js";
 // import { RegisterUserDto, LoginUserDto } from "./auth.schema.js";
 import { clearRefreshTokenCookie, setRefreshTokenCookie } from "./auth.cookie.js";
 import { BadRequestError } from "../../utils/error/index.js";
+import { setCSRFTokenCookie } from "../security/csrf.service.js";
+
+
 
 
 export class AuthController {
@@ -199,6 +202,18 @@ export class AuthController {
         return res.status(200).json({
             success: true,
             data: result,
+        });
+    };
+
+    getCsrfToken = async (
+        req: Request,
+        res: Response,
+    ) => {
+        setCSRFTokenCookie(res);
+
+        return res.status(200).json({
+            success: true,
+            message: "CSRF token initialized",
         });
     };
 }
